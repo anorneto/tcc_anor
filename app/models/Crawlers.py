@@ -29,7 +29,7 @@ class IBaseScrapper(metaclass=ABCMeta):
     def html(self):
         return self.__html or ''
 
-    async def startSession(self):  # FIXME: transform this into a decorator?
+    async def startSession(self):  # FIXME: transform this into a decorator??
         if self.__is_async:
             response = await self.__session.get(self.__url)
             if(self.__render_page == True):
