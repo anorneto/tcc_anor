@@ -36,7 +36,7 @@ class IBaseScrapper(metaclass=ABCMeta):
                 await response.html.arender(timeout=30, sleep=10,)
             self.__html = response.html
         else:
-            self.__session.get(self.__session.__url)
+            response = self.__session.get(self.__url)
             if(self.__render_page):
                 response.html.render(timeout=30, sleep=10,)
             self.__html = response.html
@@ -57,12 +57,13 @@ class AsyncScrapper(IBaseScrapper):
     def __init__(self, url: str, selectors: str, render_page: bool = False):
         super().__init__(url=url, selectors=selectors,
                          render_page=render_page, is_async=True)
+
     async def scrap(self):
         try:
             await self.startSession()
             elements = self.html.find(self.selectors)
             responseList = []
-            if isinstance(elements,list) and len(elements):
+            if isinstance(elements, list) and len(elements):
                 for element in elements:
                     responseList.append(element.text)
                 return responseList
