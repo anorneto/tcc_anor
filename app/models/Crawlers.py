@@ -105,7 +105,7 @@ class AutoScrapper(IBaseScrapper):
                             del element_tree[0:body_index]
                             break
                     for element in element_tree:
-                        # after > before each tag after the first one
+                        # add > before each tag after the first one
                         if len(element_selector) >= 1:
                             element_selector += ' > '
                         # populate selector for string
@@ -128,28 +128,3 @@ class AutoScrapper(IBaseScrapper):
             #     return "Nada Encontrado"
         finally:
             await self.clearSession()
-        # def build(self, url=None, wanted_list=None, wanted_dict=None, html=None, request_args=None, update=False):
-
-        #     for alias, wanted_items in wanted_dict.items():
-        #         wanted_items = [unicodedata.normalize(
-        #             "NFKD", w) for w in wanted_items]
-        #         wanted_list += wanted_items
-
-        #         for wanted in wanted_items:
-        #             children = self._get_children(soup, wanted, url)
-
-        #             for child in children:
-        #                 result, stack = self._get_result_for_child(
-        #                     child, soup, url)
-        #                 stack['alias'] = alias
-        #                 result_list += result
-        #                 self.stack_list.append(stack)
-
-        #     result_list = [item.text for item in result_list]
-        #     result_list = unique_hashable(result_list)
-
-        #     if all(w in result_list for w in wanted_list):
-        #         self.stack_list = unique_stack_list(self.stack_list)
-        #         return result_list
-
-        #     return None
