@@ -1,11 +1,12 @@
-from typing import List
+from typing import Dict
+from lxml.html import clean
 from requests_html import AsyncHTMLSession, HTMLSession, HTML
 from abc import ABCMeta, abstractmethod
 
 
 class IBaseScrapper(metaclass=ABCMeta):
     # Constructor
-    def __init__(self, url: str, selectors: List[str], render_page: bool = False, is_async: bool = True):
+    def __init__(self, url: str, selectors: Dict[str, str], render_page: bool = False, is_async: bool = True):
         self.__url = url.strip()  # remove white spcaes from string at beggining and end
         self.__selectors = selectors
         self.__is_async = is_async
@@ -54,25 +55,28 @@ class IBaseScrapper(metaclass=ABCMeta):
 
 
 class AsyncScrapper(IBaseScrapper):
-    def __init__(self, url: str, selectors: List[str], render_page: bool = False):
+    def __init__(self, url: str, selectors: Dict[str, str], render_page: bool = False):
         super().__init__(url=url, selectors=selectors,
                          render_page=render_page, is_async=True)
 
     async def scrap(self):
         try:
             await self.startSession()
+            result = {"url": self.url}
             elements_found = {}
-            for selector in self.selectors:
-                elements_found[f"selector{self.selectors.index(selector)}"] = self.html.find(
-                    selector)
-            responseList = {}
+            for key, value in self.selectors.items():
+                elements_found[key] = self.html.find(value, clean=True)
+            found_itens = {}
             if len(elements_found):
                 for key in elements_found:
                     elements_text = []
                     for element in elements_found[key]:
-                        elements_text.append(element.text)
-                    responseList[key] = elements_text
-                return responseList
+                        elements_text.append(
+                            element.text if element.text else "Nada encontrado")
+                    found_itens[key] = elements_text
+
+                result["itens"] = found_itens
+                return result
             else:
                 return "Nada Encontrado"
         finally:
@@ -80,20 +84,26 @@ class AsyncScrapper(IBaseScrapper):
 
 
 class AutoScrapper(IBaseScrapper):
-    def __init__(self, url: str, render_page: bool = False, string_list: List[str] = []):
+    def __init__(self, config_name: str, url: str, render_page: bool = False, strings: Dict[str, str] = []):
         super().__init__(url=url, selectors='',
                          render_page=render_page, is_async=True)
-        self.string_list = string_list
+        self.strings = strings
+        self.render_page = render_page
+        self.config_name = config_name
 
     async def scrap(self):
+        if not self.strings:
+            return 'Nenhuma string definida para busca dos seletores'
         try:
             await self.startSession()
-            wanted_selectors = []
-            for wanted_string in self.string_list:  # search for each string
-
+            result = {"config_name": self.config_name,
+                      "render_page": self.render_page}
+            wanted_selectors = dict()
+            for string_key, string_value in self.strings.items():  # search for each string
                 element_tree = self.html.find(
-                    containing=wanted_string)
-                element_selector = ""
+                    containing=string_value, clean=True)
+                full_selector = ""
+                last_selector = ""
                 if isinstance(element_tree, list) and len(element_tree):
                     # reverse element order, so we can go from top element > final element
                     element_tree.reverse()
@@ -102,29 +112,28 @@ class AutoScrapper(IBaseScrapper):
                     for element in element_tree:
                         if element.tag == "body":
                             body_index = element_tree.index(element)
+                            #element_tree = element_tree[:body_index]
                             del element_tree[0:body_index]
                             break
                     for element in element_tree:
                         # add > before each tag after the first one
-                        if len(element_selector) >= 1:
-                            element_selector += ' > '
+                        if len(full_selector) >= 1:
+                            full_selector += ' > '
                         # populate selector for string
-                        element_selector += f"{element.tag}"
+                        full_selector += f"{element.tag}"
                         # add class to the last element, the one that have the wanted string
-                        if element_tree.index(element) == len(element_tree) - 1:
+                        if element_tree.index(element) == len(element_tree) - 1 or element.text == string_value:
                             element_class = element.attrs.get("class") or ""
                             if(element_class != ""):
-                                element_selector += f".{'.'.join(element_class) or ''}"
-                    wanted_selectors.append(element_selector)
+                                last_selector = f"{(element.tag) +'.'+'.'.join(element_class)}"
+                                full_selector += f".{'.'.join(element_class) or ''}"
+                        if element.text == string_value:
+                            break
+                    wanted_selectors[string_key] = {
+                        "full": full_selector, "last": last_selector}
                 else:
-                    wanted_selectors.append(
-                        f"Nada Encontrado para : {wanted_string}")
-            return wanted_selectors
-            # if isinstance(elements, list) and len(elements):
-            #     for element in elements:
-            #         responseList.append(element.text)
-            #     return responseList
-            # else:
-            #     return "Nada Encontrado"
+                    wanted_selectors[string_key] = {"full": "", "last": ""}
+                result["selectors"] = wanted_selectors
+            return result
         finally:
             await self.clearSession()
