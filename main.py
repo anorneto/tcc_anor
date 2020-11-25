@@ -1,4 +1,5 @@
 import asyncio
+from enum import auto
 import uvicorn
 
 from fastapi import FastAPI
@@ -20,26 +21,30 @@ async def testeRoute():
 
 
 class ScrapConfig(BaseModel):
-    url: str
+    config_name: str
+    base_url: str
     selectors: Dict[str, str]
-    render: bool = False
+    response_as_list: bool = False
+    render_page: bool = False
 
 
 class MultiScrapConfig(BaseModel):
-    sites: List[ScrapConfig]
+    configs: List[ScrapConfig]
 
 
 class AutoScrapConfig(BaseModel):
     config_name: str
     base_url: str
     strings: Dict[str, str]
+    response_as_list: bool = False
     render_page: bool = False
     list_url: List[str] = []
 
 
 @app.post("/site")
 async def siteRoute(scrapConfig: ScrapConfig):
-    ascrapper = AsyncScrapper(scrapConfig.url, scrapConfig.selectors)
+    ascrapper = AsyncScrapper(config_name=scrapConfig.config_name, url=scrapConfig.base_url,
+                              selectors=scrapConfig.selectors, render_page=scrapConfig.render_page, response_as_list=scrapConfig.response_as_list)
     response = await ascrapper.scrap()
     return JSONResponse(content=response)
 
@@ -47,9 +52,9 @@ async def siteRoute(scrapConfig: ScrapConfig):
 @app.post("/multisite")
 async def multisiteRoute(multiConfig: MultiScrapConfig):
     scrappersList = []
-    for scrapConfig in multiConfig.sites:
-        scrappersList.append(AsyncScrapper(
-            url=scrapConfig.url, selectors=scrapConfig.selectors, render_page=scrapConfig.render or False))
+    for scrapConfig in multiConfig.configs:
+        scrappersList.append(AsyncScrapper(config_name=scrapConfig.config_name,
+                                           url=scrapConfig.base_url, selectors=scrapConfig.selectors, render_page=scrapConfig.render_page or False))
 
     done = await asyncio.gather(*[scrapper.scrap() for scrapper in scrappersList])
 
@@ -68,8 +73,8 @@ async def autoRoute(autoConfig: AutoScrapConfig):
         for key in scrap_result["selectors"]:
             selectors[key] = scrap_result["selectors"][key]["full"]
         for url in autoConfig.list_url:
-            scrappersList.append(AsyncScrapper(
-                url=url, selectors=selectors, render_page=scrap_result["render_page"] or False))
+            scrappersList.append(AsyncScrapper(config_name=autoConfig.config_name,
+                                               url=url, selectors=selectors, response_as_list=autoConfig.response_as_list, render_page=autoConfig.render_page))
 
         done = await asyncio.gather(*[scrapper.scrap() for scrapper in scrappersList])
         return JSONResponse(content=done)

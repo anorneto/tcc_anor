@@ -6,7 +6,8 @@ from abc import ABCMeta, abstractmethod
 
 class IBaseScrapper(metaclass=ABCMeta):
     # Constructor
-    def __init__(self, url: str, selectors: Dict[str, str], render_page: bool = False, is_async: bool = True):
+    def __init__(self, config_name: str, url: str, selectors: Dict[str, str], render_page: bool = False,  is_async: bool = True):
+        self.__config_name = config_name.strip()
         self.__url = url.strip()  # remove white spcaes from string at beggining and end
         self.__selectors = selectors
         self.__is_async = is_async
@@ -15,12 +16,20 @@ class IBaseScrapper(metaclass=ABCMeta):
         self.__html: HTML = None
 
     @property
+    def config_name(self):
+        return self.__config_name
+
+    @property
     def url(self):
         return self.__url
 
     @property
     def selectors(self):
         return self.__selectors
+
+    @property
+    def render_page(self):
+        return self.__render_page
 
     @property
     def session(self):
@@ -55,27 +64,42 @@ class IBaseScrapper(metaclass=ABCMeta):
 
 
 class AsyncScrapper(IBaseScrapper):
-    def __init__(self, url: str, selectors: Dict[str, str], render_page: bool = False):
-        super().__init__(url=url, selectors=selectors,
+    def __init__(self, config_name: str, url: str, selectors: Dict[str, str], render_page: bool = False, response_as_list: bool = False):
+        super().__init__(config_name=config_name, url=url, selectors=selectors,
                          render_page=render_page, is_async=True)
+        self.response_as_list = response_as_list
 
     async def scrap(self):
         try:
             await self.startSession()
-            result = {"url": self.url}
-            elements_found = {}
+            result = {"config_name": self.config_name,
+                      "render_page": self.render_page}
+            elements_found = dict()
             for key, value in self.selectors.items():
                 elements_found[key] = self.html.find(value, clean=True)
-            found_itens = {}
+            found_items = dict()
             if len(elements_found):
                 for key in elements_found:
                     elements_text = []
                     for element in elements_found[key]:
                         elements_text.append(
                             element.text if element.text else "Nada encontrado")
-                    found_itens[key] = elements_text
+                    found_items[key] = elements_text
+                if(self.response_as_list):
+                    headers = list()
+                    list_of_items = list()
+                    for key, values in found_items.items():
+                        headers.append(key)
+                        for index, value in enumerate(values):
+                            try:
+                                list_of_items[index].append(value)
+                            except IndexError:
+                                list_of_items.append([value])
 
-                result["itens"] = found_itens
+                    result["headers"] = headers
+                    result["items"] = list_of_items
+                else:
+                    result["items"] = found_items
                 return result
             else:
                 return "Nada Encontrado"
@@ -85,11 +109,9 @@ class AsyncScrapper(IBaseScrapper):
 
 class AutoScrapper(IBaseScrapper):
     def __init__(self, config_name: str, url: str, render_page: bool = False, strings: Dict[str, str] = []):
-        super().__init__(url=url, selectors='',
+        super().__init__(config_name=config_name, url=url, selectors='',
                          render_page=render_page, is_async=True)
         self.strings = strings
-        self.render_page = render_page
-        self.config_name = config_name
 
     async def scrap(self):
         if not self.strings:
