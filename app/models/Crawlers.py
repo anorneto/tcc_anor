@@ -78,23 +78,24 @@ class AsyncScrapper(IBaseScrapper):
             for key, value in self.selectors.items():
                 elements_found[key] = self.html.find(value, clean=True)
             found_items = dict()
-            if len(elements_found):
+            max_length_elements_found = 0
+            len_headers = len(elements_found)
+            if len_headers:
                 for key in elements_found:
                     elements_text = []
+                    if(len(elements_found[key]) > max_length_elements_found):
+                        max_length_elements_found = len(elements_found[key])
                     for element in elements_found[key]:
                         elements_text.append(
                             element.text if element.text else "Nada encontrado")
                     found_items[key] = elements_text
                 if(self.response_as_list):
-                    headers = list()
-                    list_of_items = list()
-                    for key, values in found_items.items():
-                        headers.append(key)
-                        for index, value in enumerate(values):
-                            try:
-                                list_of_items[index].append(value)
-                            except IndexError:
-                                list_of_items.append([value])
+                    headers = list(found_items.keys())
+                    list_of_items = [
+                        [""] * len_headers for i in range(max_length_elements_found)]
+                    for index_header, value_header in enumerate(headers):
+                        for index_item, value_item in enumerate(found_items[value_header]):
+                            list_of_items[index_item][index_header] = value_item
 
                     result["headers"] = headers
                     result["items"] = list_of_items

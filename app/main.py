@@ -1,5 +1,4 @@
 import asyncio
-from enum import auto
 import uvicorn
 
 from fastapi import FastAPI
@@ -15,7 +14,7 @@ app = FastAPI()
 @app.get("/teste")
 async def testeRoute():
     ascrapper = AsyncScrapper(
-        url='https://hardmob.com.br/promocoes/', selectors='h3.threadtitle')
+        url='https://hardmob.com.br/promocoes/', selectors='h3.threadtitle', config_name='Teste')
     response = await ascrapper.scrap()
     return JSONResponse(content=response)
 
@@ -37,8 +36,8 @@ class AutoScrapConfig(BaseModel):
     base_url: str
     strings: Dict[str, str]
     response_as_list: bool = False
-    render_page: bool = False
     list_url: List[str] = []
+    render_page: bool = False
 
 
 @app.post("/site")
@@ -89,5 +88,10 @@ async def selectorsRoute(autoConfig: AutoScrapConfig):
     response = await auto_scrapper.scrap()
     return JSONResponse(content=response)
 
-if __name__ == "__main__":
+
+def main():
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
+
+if __name__ == "__main__":
+    main()
