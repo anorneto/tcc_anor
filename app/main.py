@@ -3,8 +3,8 @@ import uvicorn
 
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
-from typing import List, Dict
+from typing import Dict
+from app.models.Routers_Config import *
 
 from app.models.Crawlers import AsyncScrapper, AutoScrapper
 
@@ -17,27 +17,6 @@ async def testeRoute():
         url='https://hardmob.com.br/promocoes/', selectors='h3.threadtitle', config_name='Teste')
     response = await ascrapper.scrap()
     return JSONResponse(content=response)
-
-
-class ScrapConfig(BaseModel):
-    config_name: str
-    base_url: str
-    selectors: Dict[str, str]
-    response_as_list: bool = False
-    render_page: bool = False
-
-
-class MultiScrapConfig(BaseModel):
-    configs: List[ScrapConfig]
-
-
-class AutoScrapConfig(BaseModel):
-    config_name: str
-    base_url: str
-    strings: Dict[str, str]
-    response_as_list: bool = False
-    list_url: List[str] = []
-    render_page: bool = False
 
 
 @app.post("/site")

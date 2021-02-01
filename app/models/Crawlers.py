@@ -1,5 +1,4 @@
 from typing import Dict
-from lxml.html import clean
 from requests_html import AsyncHTMLSession, HTMLSession, HTML
 from abc import ABCMeta, abstractmethod
 
@@ -8,7 +7,7 @@ class IBaseScrapper(metaclass=ABCMeta):
     # Constructor
     def __init__(self, config_name: str, url: str, selectors: Dict[str, str], render_page: bool = False,  is_async: bool = True):
         self.__config_name = config_name.strip()
-        self.__url = url.strip()  # remove white spcaes from string at beggining and end
+        self.__url = url.strip()  # remove white spaces from string at beggining and end
         self.__selectors = selectors
         self.__is_async = is_async
         self.__render_page = render_page
