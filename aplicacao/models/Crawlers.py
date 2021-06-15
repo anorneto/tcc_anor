@@ -1,5 +1,5 @@
 from typing import Dict
-from requests_html import AsyncHTMLSession, HTMLSession, HTML
+from requests_html import AsyncHTMLSession, HTMLSession, HTML, PyQuery
 from abc import ABCMeta, abstractmethod
 
 
@@ -11,8 +11,12 @@ class IBaseScrapper(metaclass=ABCMeta):
         self.__selectors = selectors
         self.__is_async = is_async
         self.__render_page = render_page
-        self.__session = AsyncHTMLSession() if is_async == True else HTMLSession()
         self.__html: HTML = None
+
+        if is_async == True:
+            self.__session = AsyncHTMLSession(verify=False)
+        else:
+            self.__session = HTMLSession(verify=False)
 
     @property
     def config_name(self):
@@ -39,17 +43,20 @@ class IBaseScrapper(metaclass=ABCMeta):
         return self.__html or ''
 
     async def startSession(self):  # FIXME: transform this into a decorator??
-        if self.__is_async:
-            response = await self.__session.get(self.__url)
-            if(self.__render_page == True):
-                await response.html.arender(timeout=30, sleep=10,)
-            self.__html = response.html
-        else:
-            response = self.__session.get(self.__url)
-            if(self.__render_page):
-                response.html.render(timeout=30, sleep=10,)
-            self.__html = response.html
-        return self.html
+        try:
+            if self.__is_async:
+                response = await self.__session.get(self.__url)
+                if(self.__render_page == True):
+                    await response.html.arender(timeout=180, sleep=5, wait=1)
+                self.__html = response.html
+            else:
+                response = self.__session.get(self.__url)
+                if(self.__render_page):
+                    response.html.render(timeout=180, sleep=5, wait=1)
+                self.__html = response.html
+            return self.html
+        except Exception as e:
+            raise e
 
     @abstractmethod
     async def scrap(self):
@@ -57,7 +64,7 @@ class IBaseScrapper(metaclass=ABCMeta):
 
     async def clearSession(self):
         if self.__is_async:
-            await self.__session.close()
+            self.__session.close()
         else:
             self.__session.close()
 
@@ -86,7 +93,7 @@ class AsyncScrapper(IBaseScrapper):
                         max_length_elements_found = len(elements_found[key])
                     for element in elements_found[key]:
                         elements_text.append(
-                            element.text if element.text else "Nada encontrado")
+                            element.text.replace("\n", " ") if element.text else "")
                     found_items[key] = elements_text
                 if(self.response_as_list):
                     headers = list(found_items.keys())
@@ -103,6 +110,8 @@ class AsyncScrapper(IBaseScrapper):
                 return result
             else:
                 return "Nada Encontrado"
+        except Exception as e:
+            raise e
         finally:
             await self.clearSession()
 
@@ -127,6 +136,18 @@ class AutoScrapper(IBaseScrapper):
                 full_selector = ""
                 last_selector = ""
                 if isinstance(element_tree, list) and len(element_tree):
+                    # If final element is a tr > td, lets find it index
+                    index_element = None
+                    if(element_tree[1].tag == "tr" and element_tree[0].tag == 'td'):
+                        pyQuery = PyQuery(element_tree[1].html)
+
+                        parent_element_children_text = []
+                        for elem in pyQuery.items('td'):
+                            parent_element_children_text.append(
+                                elem.text() or "")
+
+                        index_element = parent_element_children_text.index(
+                            string_value) + 1
                     # reverse element order, so we can go from top element > final element
                     element_tree.reverse()
                     # searching for the element that contains the body
@@ -134,7 +155,7 @@ class AutoScrapper(IBaseScrapper):
                     for element in element_tree:
                         if element.tag == "body":
                             body_index = element_tree.index(element)
-                            #element_tree = element_tree[:body_index]
+                            # element_tree = element_tree[:body_index]
                             del element_tree[0:body_index]
                             break
                     for element in element_tree:
@@ -146,9 +167,14 @@ class AutoScrapper(IBaseScrapper):
                         # add class to the last element, the one that have the wanted string
                         if element_tree.index(element) == len(element_tree) - 1 or element.text == string_value:
                             element_class = element.attrs.get("class") or ""
-                            if(element_class != ""):
+                            # if its a td, lets specufy the index of it
+                            if(index_element is not None):
+                                last_selector += f"table tbody tr {element.tag}:nth-of-type({index_element})"
+                                full_selector += f":nth-of-type({index_element})"
+                            elif(element_class != ""):
                                 last_selector = f"{(element.tag) +'.'+'.'.join(element_class)}"
                                 full_selector += f".{'.'.join(element_class) or ''}"
+
                         if element.text == string_value:
                             break
                     wanted_selectors[string_key] = {
@@ -157,5 +183,7 @@ class AutoScrapper(IBaseScrapper):
                     wanted_selectors[string_key] = {"full": "", "last": ""}
                 result["selectors"] = wanted_selectors
             return result
+        except Exception as e:
+            raise e
         finally:
             await self.clearSession()

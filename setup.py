@@ -32,12 +32,12 @@ setup(
     keywords='scraping - scraper - api',
 
     packages=find_packages(
-        include=['app', 'app.*'], exclude=['contrib', 'docs', 'tests']),
+        include=['aplicacao', 'aplicacao.*'], exclude=['contrib', 'docs', 'tests']),
 
     python_requires='>=3.6',
     install_requires=['requests-html', 'pyppeteer',
                       'fastapi', 'uvicorn', 'pydantic'],
     entry_points={
-        'console_scripts': ['tcc-anor=app.main:main']
+        'console_scripts': ['tcc-anor=aplicacao.__main__:main']
     },
 )
