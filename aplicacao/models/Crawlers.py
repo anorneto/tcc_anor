@@ -2,6 +2,8 @@ from typing import Dict
 from requests_html import AsyncHTMLSession, HTMLSession, HTML, PyQuery
 from abc import ABCMeta, abstractmethod
 
+from .ResponseModels import ScrapResponse, AutoScrapResponse
+
 
 class IBaseScrapper(metaclass=ABCMeta):
     # Constructor
@@ -47,12 +49,12 @@ class IBaseScrapper(metaclass=ABCMeta):
             if self.__is_async:
                 response = await self.__session.get(self.__url)
                 if(self.__render_page == True):
-                    await response.html.arender(timeout=180, sleep=5, wait=1)
+                    await response.html.arender(timeout=120, sleep=5, wait=1)
                 self.__html = response.html
             else:
                 response = self.__session.get(self.__url)
                 if(self.__render_page):
-                    response.html.render(timeout=180, sleep=5, wait=1)
+                    response.html.render(timeout=120, sleep=5, wait=1)
                 self.__html = response.html
             return self.html
         except Exception as e:
@@ -64,7 +66,7 @@ class IBaseScrapper(metaclass=ABCMeta):
 
     async def clearSession(self):
         if self.__is_async:
-            self.__session.close()
+            await self.__session.close()
         else:
             self.__session.close()
 
@@ -78,8 +80,11 @@ class AsyncScrapper(IBaseScrapper):
     async def scrap(self):
         try:
             await self.startSession()
-            result = {"config_name": self.config_name,
-                      "render_page": self.render_page}
+            result = {
+                "config_name": self.config_name,
+                "url": self.url,
+                "render_page": self.render_page
+            }
             elements_found = dict()
             for key, value in self.selectors.items():
                 elements_found[key] = self.html.find(value, clean=True)
@@ -127,8 +132,11 @@ class AutoScrapper(IBaseScrapper):
             return 'Nenhuma string definida para busca dos seletores'
         try:
             await self.startSession()
-            result = {"config_name": self.config_name,
-                      "render_page": self.render_page}
+            result = result = {
+                "config_name": self.config_name,
+                "url": self.url,
+                "render_page": self.render_page
+            }
             wanted_selectors = dict()
             for string_key, string_value in self.strings.items():  # search for each string
                 element_tree = self.html.find(

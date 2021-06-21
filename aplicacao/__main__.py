@@ -1,35 +1,16 @@
 import asyncio
 import uvicorn
 
-from typing import List, Dict
+from typing import List, Union
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
-from pydantic.main import BaseModel
 
-from .models.Crawlers import AutoScrapper, AsyncScrapper
+from models.Crawlers import AutoScrapper, AsyncScrapper
+from models.RequestConfig import ScrapConfig, AutoScrapConfig
+from models.ResponseModels import ScrapResponse, AutoScrapResponse
+
 
 app = FastAPI()
-
-
-class ScrapConfig(BaseModel):
-    config_name: str
-    base_url: str
-    selectors: Dict[str, str]
-    response_as_list: bool = False
-    render_page: bool = False
-
-
-class MultiScrapConfig(BaseModel):
-    configs: List[ScrapConfig]
-
-
-class AutoScrapConfig(BaseModel):
-    config_name: str
-    base_url: str
-    strings: Dict[str, str]
-    response_as_list: bool = False
-    list_url: List[str] = []
-    render_page: bool = False
 
 
 @app.exception_handler(Exception)
@@ -38,7 +19,7 @@ async def validation_exception_handler(request, err):
     return JSONResponse(status_code=500, content={"message": f"{base_error_message}", "detail":  f"{err}"})
 
 
-@app.post("/site")
+@app.post("/site", response_model=ScrapResponse)
 async def siteRoute(scrapConfig: ScrapConfig):
     ascrapper = AsyncScrapper(config_name=scrapConfig.config_name, url=scrapConfig.base_url,
                               selectors=scrapConfig.selectors, render_page=scrapConfig.render_page, response_as_list=scrapConfig.response_as_list)
@@ -46,21 +27,21 @@ async def siteRoute(scrapConfig: ScrapConfig):
     return JSONResponse(content=response)
 
 
-@app.post("/multisite")
-async def multisiteRoute(multiConfig: MultiScrapConfig):
+@app.post("/multisite", response_model=List[ScrapResponse])
+async def multisiteRoute(multiConfig: List[ScrapConfig]):
     scrappersList = []
-    for scrapConfig in multiConfig.configs:
+    for scrapConfig in multiConfig:
         scrappersList.append(AsyncScrapper(config_name=scrapConfig.config_name,
                                            url=scrapConfig.base_url, selectors=scrapConfig.selectors,
                                            response_as_list=scrapConfig.response_as_list,
                                            render_page=scrapConfig.render_page or False))
 
-    done = await asyncio.gather(*[scrapper.scrap() for scrapper in scrappersList])
+    scrappersResult = await asyncio.gather(*[scrapper.scrap() for scrapper in scrappersList])
 
-    return JSONResponse(content=[done])
+    return JSONResponse(content=scrappersResult)
 
 
-@app.post("/auto")
+@app.post("/auto", response_model=Union[AutoScrapResponse, List[ScrapResponse]])
 async def autoRoute(autoConfig: AutoScrapConfig):
     auto_scrapper = AutoScrapper(config_name=autoConfig.config_name,
                                  url=autoConfig.base_url, render_page=autoConfig.render_page, strings=autoConfig.strings)
@@ -78,8 +59,8 @@ async def autoRoute(autoConfig: AutoScrapConfig):
             scrappersList.append(AsyncScrapper(config_name=autoConfig.config_name,
                                                url=url, selectors=selectors, response_as_list=autoConfig.response_as_list, render_page=autoConfig.render_page))
 
-        done = await asyncio.gather(*[scrapper.scrap() for scrapper in scrappersList])
-        return JSONResponse(content=done)
+        scrappersResult = await asyncio.gather(*[scrapper.scrap() for scrapper in scrappersList])
+        return JSONResponse(content=scrappersResult)
     else:
         return JSONResponse(content=scrap_result)
 
