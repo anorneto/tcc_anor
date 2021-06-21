@@ -56,11 +56,10 @@ async def autoRoute(autoConfig: AutoScrapConfig):
             else:
                 selectors[key] = scrap_result["selectors"][key]["full"]
         for url in autoConfig.list_url:
-            scrappersList.append(AsyncScrapper(config_name=autoConfig.config_name,
-                                               url=url, selectors=selectors, response_as_list=autoConfig.response_as_list, render_page=autoConfig.render_page))
+            scrappersList.append(ScrapConfig(config_name=autoConfig.config_name,
+                                             base_url=url, selectors=selectors, response_as_list=autoConfig.response_as_list, render_page=autoConfig.render_page))
 
-        scrappersResult = await asyncio.gather(*[scrapper.scrap() for scrapper in scrappersList])
-        return JSONResponse(content=scrappersResult)
+        return await multisiteRoute(multiConfig=scrappersList)
     else:
         return JSONResponse(content=scrap_result)
 
