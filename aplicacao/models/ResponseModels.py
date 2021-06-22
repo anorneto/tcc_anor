@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict, List,Union
 from pydantic import BaseModel
 
 
@@ -7,7 +7,7 @@ class ScrapResponse(BaseModel):
     url: str
     render_page: bool = False
     headers: List[str] = None
-    itens: Dict[str, str]
+    items: Union[Dict[str, str],List[List[str]]]
 
 
 class AutoScrapResponse(BaseModel):
