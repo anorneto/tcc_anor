@@ -10,7 +10,9 @@ from models.RequestConfig import ScrapConfig, AutoScrapConfig
 from models.ResponseModels import ScrapResponse, AutoScrapResponse
 
 
-app = FastAPI()
+app = FastAPI(title="TCC Anor",
+              description="Web Scrapping API",
+              version="1.0.0",)
 
 
 @app.exception_handler(Exception)
@@ -64,12 +66,12 @@ async def autoRoute(autoConfig: AutoScrapConfig):
         return JSONResponse(content=scrap_result)
 
 
-@app.post("/selectors")
+""" @app.post("/selectors")
 async def selectorsRoute(autoConfig: AutoScrapConfig):
     auto_scrapper = AutoScrapper(config_name=autoConfig.config_name,
                                  url=autoConfig.base_url, strings=autoConfig.strings)
     response = await auto_scrapper.scrap()
-    return JSONResponse(content=response)
+    return JSONResponse(content=response) """
 
 
 def main():
