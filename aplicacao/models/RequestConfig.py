@@ -7,6 +7,7 @@ class ScrapConfig(BaseModel):
     base_url: str
     selectors: Dict[str, str]
     response_as_list: bool = False
+    headers: List[str] = None
     render_page: bool = False
 
 
