@@ -7,7 +7,7 @@ class ScrapResponse(BaseModel):
     url: str
     render_page: bool = False
     headers: List[str] = None
-    items: Union[Dict[str, str],List[List[str]]]
+    items: Union[Dict[str, List[str]], List[List[str]]]
 
 
 class AutoScrapResponse(BaseModel):
