@@ -14,4 +14,4 @@ class AutoScrapResponse(BaseModel):
     config_name: str
     url: str
     render_page: bool = False
-    selectors: Dict[str, str]
+    selectors: Dict[str, Dict[str,str]]
