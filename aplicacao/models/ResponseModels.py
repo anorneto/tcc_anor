@@ -6,6 +6,7 @@ class ScrapResponse(BaseModel):
     config_name: str
     url: str
     render_page: bool = False
+    headers: List[str] = None
     itens: Dict[str, str]
 
 
